@@ -1,8 +1,9 @@
 services:
-  # Backend Web Service
+  # Backend Web Service (Free Tier)
   - type: web
     name: agrilink-backend
     env: node
+    plan: free
     rootDir: backend
     buildCommand: npm install
     startCommand: node server.js
@@ -20,10 +21,11 @@ services:
       - key: ADMIN_PASSWORD
         generateValue: true
 
-  # Frontend Static Site
+  # Frontend Static Site (Free Tier)
   - type: web
     name: agrilink-frontend
     env: static
+    plan: free
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
