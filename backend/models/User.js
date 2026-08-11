@@ -74,9 +74,9 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.passwordHash);
 };
 
-userSchema.pre('save', async function (next) {
+userSchema.pre('save', async function () {
   if (!this.isModified('passwordHash')) {
-    next();
+    return;
   }
   if (!this.passwordHash.startsWith('$2a$') && !this.passwordHash.startsWith('$2b$')) {
     const salt = await bcrypt.genSalt(10);
