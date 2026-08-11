@@ -21,11 +21,10 @@ services:
       - key: ADMIN_PASSWORD
         generateValue: true
 
-  # Frontend Static Site (Free Tier)
+  # Frontend Static Site (Always Free)
   - type: web
     name: agrilink-frontend
     env: static
-    plan: free
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
