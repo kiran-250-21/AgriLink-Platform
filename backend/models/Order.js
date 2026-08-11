@@ -69,6 +69,7 @@ const orderSchema = new mongoose.Schema(
         'LOGISTICS_REQUIRED',
         'DRIVER_ASSIGNED',
         'IN_DELIVERY',
+        'DELIVERED',
         'COMPLETED',
         'CANCELLED',
       ],

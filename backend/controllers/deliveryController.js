@@ -2,7 +2,6 @@ const Delivery = require('../models/Delivery');
 const Order = require('../models/Order');
 const Vehicle = require('../models/Vehicle');
 const AuditLog = require('../models/AuditLog');
-const { updateDeliveryTimeline } = require('../services/logisticsService');
 const { createNotification } = require('../services/notificationService');
 
 // @desc    Get available logistics jobs awaiting driver assignment
@@ -10,7 +9,6 @@ const { createNotification } = require('../services/notificationService');
 // @access  Private (Driver / Admin)
 const getAvailableJobs = async (req, res) => {
   try {
-    // Driver query visibility rule: status = LOGISTICS_REQUIRED
     const deliveries = await Delivery.find({ status: 'LOGISTICS_REQUIRED' })
       .populate('orderId')
       .populate('farmerId', 'name phone farmerProfile')
@@ -37,12 +35,19 @@ const acceptDeliveryJob = async (req, res) => {
 
     const vehicle = await Vehicle.findOne({ driverId: req.user._id, active: true });
 
+    // Explicitly set driverId and vehicleId on delivery document
     delivery.driverId = req.user._id;
     if (vehicle) delivery.vehicleId = vehicle._id;
+    delivery.status = 'DRIVER_ASSIGNED';
+    delivery.timeline.push({
+      status: 'DRIVER_ASSIGNED',
+      timestamp: new Date(),
+      note: `Assigned to driver ${req.user.name}`,
+    });
 
-    await updateDeliveryTimeline(delivery._id, 'DRIVER_ASSIGNED', `Assigned to driver ${req.user.name}`);
+    await delivery.save();
 
-    // Update parent order status
+    // Update parent order status to DRIVER_ASSIGNED
     await Order.findByIdAndUpdate(delivery.orderId, { orderStatus: 'DRIVER_ASSIGNED' });
 
     // Notify farmer & buyer
@@ -72,8 +77,16 @@ const acceptDeliveryJob = async (req, res) => {
       details: `Driver ${req.user.name} accepted job for Delivery ${delivery._id}`,
     });
 
-    res.json(delivery);
+    // Populate driver info for immediate UI update
+    const updatedDelivery = await Delivery.findById(delivery._id)
+      .populate('orderId')
+      .populate('farmerId', 'name phone farmerProfile')
+      .populate('buyerId', 'name phone buyerProfile')
+      .populate('driverId', 'name phone driverProfile');
+
+    res.json(updatedDelivery);
   } catch (error) {
+    console.error('[acceptDeliveryJob Error]', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -100,11 +113,19 @@ const updateDeliveryStatus = async (req, res) => {
       return res.status(400).json({ message: 'Invalid delivery status state' });
     }
 
-    await updateDeliveryTimeline(delivery._id, status, note || `Status updated to ${status}`);
+    delivery.status = status;
+    delivery.timeline.push({
+      status,
+      timestamp: new Date(),
+      note: note || `Status updated to ${status}`,
+    });
+    await delivery.save();
 
-    // Update associated order status
+    // Map delivery status to orderStatus
     let orderState = 'IN_DELIVERY';
-    if (status === 'COMPLETED' || status === 'BUYER_CONFIRMED') {
+    if (status === 'DELIVERED') {
+      orderState = 'DELIVERED';
+    } else if (status === 'COMPLETED' || status === 'BUYER_CONFIRMED') {
       orderState = 'COMPLETED';
     }
     await Order.findByIdAndUpdate(delivery.orderId, { orderStatus: orderState });
@@ -130,6 +151,7 @@ const updateDeliveryStatus = async (req, res) => {
 
     res.json(delivery);
   } catch (error) {
+    console.error('[updateDeliveryStatus Error]', error);
     res.status(500).json({ message: error.message });
   }
 };
