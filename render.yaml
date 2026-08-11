@@ -1,0 +1,40 @@
+services:
+  # Backend Web Service
+  - type: web
+    name: agrilink-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false # Set in Render Dashboard with MongoDB Atlas Connection String
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: admin@agrilink.com
+      - key: ADMIN_PASSWORD
+        generateValue: true
+
+  # Frontend Static Site
+  - type: web
+    name: agrilink-frontend
+    env: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: agrilink-backend
+          property: url
+          suffix: /api
