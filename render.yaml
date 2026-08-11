@@ -12,7 +12,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: MONGO_URI
-        sync: false # Set in Render Dashboard with MongoDB Atlas Connection String
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: ADMIN_EMAIL
@@ -36,5 +36,4 @@ services:
         fromService:
           type: web
           name: agrilink-backend
-          property: url
-          suffix: /api
+          property: host
